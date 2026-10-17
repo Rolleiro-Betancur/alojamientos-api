@@ -17,3 +17,7 @@ uploads/*
 
 # Cache de herramientas de desarrollo
 .ruff_cache/
+
+# CI local
+ci-logs/
+dist-ci/

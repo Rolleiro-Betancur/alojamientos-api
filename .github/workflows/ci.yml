@@ -1,0 +1,46 @@
+name: ci-api
+# Verificacion de la API (ME2 - Semana 9). Disparadores: push, pull request y ejecucion manual.
+# Una preparacion satisfactoria NO equivale a despliegue ni a liberacion final.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Instalar dependencias (produccion + dev)
+        run: python -m pip install -r requirements-dev.txt
+      - name: Consistencia de dependencias
+        run: python -m pip check
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Formato (black --check)
+        run: black --check .
+      - name: Pruebas automatizadas (pytest, SQLite en memoria; no requiere secretos ni MySQL)
+        run: python -m pytest -q
+      - name: Auditoria de dependencias (informativa; hallazgos se gestionan en el plan de mantenimiento)
+        continue-on-error: true
+        run: |
+          python -m pip install pip-audit
+          pip-audit -r requirements.txt
+      - name: Empaquetar fuente del commit y calcular SHA-256
+        run: |
+          mkdir -p dist-ci
+          git archive --format=tar --prefix="alojamientos-api-${GITHUB_SHA::7}/" HEAD | gzip -n > "dist-ci/alojamientos-api-${GITHUB_SHA::7}-src.tar.gz"
+          sha256sum dist-ci/*.tar.gz | tee dist-ci/SHA256SUMS
+          if tar -tzf dist-ci/*.tar.gz | grep -qE '(^|/)\.env$'; then echo 'ERROR: .env dentro del artefacto'; exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-src-${{ github.sha }}
+          path: dist-ci/
