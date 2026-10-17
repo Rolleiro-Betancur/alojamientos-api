@@ -23,8 +23,8 @@ Uso:
 import os
 import sys
 
-from dotenv import load_dotenv
 import pymysql
+from dotenv import load_dotenv
 
 # ------------------------------------------------------------------
 # Carga explicita del archivo .env
